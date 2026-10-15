@@ -33,6 +33,10 @@ python -I tools/build_docs.py --endpoints out/endpoints.json --curation tools/cu
 
 To see what changed between module versions, keep each version's `endpoints.json` and compare `(method, path, api_version.value, body)` per record.
 
+## Licence
+
+The scripts and documentation in this repository are released under the [MIT licence](LICENSE). The licence does not cover the `Microsoft.PowerApps.Administration.PowerShell` module, which is not included here and remains under Microsoft's own terms. Microsoft, Power Platform, Power Apps and Power Automate are trademarks of Microsoft.
+
 ## Contributing live evidence
 
 Pages say "Not verified live" until a captured request and response confirms them. If you capture traffic from the admin center (browser dev tools) or from the cmdlets (`-Verbose` plus Fiddler), open an issue with the redacted request line, status code and response shape.
