@@ -1,0 +1,5 @@
+out/
+module-src/
+*.nupkg
+admin.zip
+__pycache__/

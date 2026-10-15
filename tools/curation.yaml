@@ -1,0 +1,773 @@
+# Hand-curated layer on top of out/endpoints.json.
+#
+# The extractor (extract_endpoints.py) records what the module source proves: routes, verbs,
+# api-versions, body literals and which response properties the cmdlets read. This file adds what
+# the source cannot: operation names, grouping, object schemas the module only passes through,
+# caveats, and links to the few officially documented endpoints.
+#
+# Every schema field carries a "basis":
+#   S = read from the module source (cite file:line in the field description where useful)
+#   D = documented on Microsoft Learn (cmdlet or feature docs, not a REST reference)
+#   I = inferred; not proven by source or docs. Verify live before relying on it.
+#
+# Operation keys are "METHOD {hostMacro}/path" after parameter-name normalisation (see param_aliases).
+
+param_aliases:
+  # Different cmdlets use different placeholder names for the same path segment.
+  environment: environmentName
+  environmentname: environmentName
+  connector: connectorName
+  application: appName
+  "$type": planType
+  "$mobileType": mobileType
+  "$DatabaseId": databaseId
+  t2tmigrationId: migrationId
+  f0: environmentIdPrefix
+  f1: environmentIdSuffix
+  f2: settingName
+
+# connectorEnablementConfigurations uses {id} in one cmdlet and {policyId} in the others.
+path_param_overrides:
+  - match: connectorEnablementConfigurations/\{id\}
+    from: id
+    to: policyId
+
+sections:
+  - name: Data policies and governance
+    groups:
+      - name: Policies
+        match: 'PowerPlatform\.Governance/v1/policies(/\{policyName\})?$'
+        intro: >-
+          Tenant- and environment-scoped data policies (DLP) in the current schema, as used by
+          Get-/New-/Set-/Remove-DlpPolicy. These are the routes the admin center's policy editor
+          is believed to use; the module calls them without an api-version.
+      - name: Policy Connector Configurations
+        match: '/policyconnectorconfigurations$'
+        intro: Connector action rules and endpoint filtering rules attached to one data policy.
+      - name: Policy Exempt Resources
+        match: '/exemptResources$'
+        intro: Apps and flows exempted from one data policy.
+      - name: URL Patterns
+        match: '/urlPatterns$'
+        intro: >-
+          Custom connector URL pattern rules, per policy (tenant-level policies only) and
+          tenant-wide.
+      - name: Connector Blocking Policy
+        match: '/connectorEnablementConfigurations'
+        intro: >-
+          The tenant's connector blocking (connector enablement) policy, used to disable
+          connectors tenant-wide. The cmdlets call it "connector blocking policy"; the route
+          calls it connectorEnablementConfigurations.
+      - name: Governance Error Settings
+        match: '/errorSettings$'
+        intro: >-
+          Governance error message content (link and contact) shown to makers when a policy
+          blocks them. Two cmdlet families (PowerAppDlpErrorSettings and GovernanceErrorSettings)
+          call the same routes.
+      - name: Tenant Isolation Policy
+        match: '/tenantIsolationPolicy'
+        intro: Cross-tenant inbound and outbound connection restrictions.
+      - name: Governance Connectors
+        match: 'PowerPlatform\.Governance/v1/(environments/[^/]+/)?connectors'
+        intro: Connector catalog lookups used when building policies (actions, virtual connectors, desktop flow modules).
+      - name: DLP Enforcement
+        match: 'reevaluateconnectionsdlp'
+        intro: Background jobs that re-evaluate existing connections against data policies.
+      - name: Legacy API Policies
+        match: '/apiPolicies'
+        intro: >-
+          The original DLP schema (hbi/lbi API groups) on Microsoft.BusinessAppPlatform, used by
+          Get-/New-/Set-/Remove-AdminDlpPolicy and the *ConnectorToBusinessDataGroup cmdlets.
+          Prefer the Policies group for new work.
+      - name: Copilot Governance
+        match: 'copilotgovernance'
+        intro: Per-environment Copilot governance settings on the Power Platform API host.
+  - name: Platform administration
+    groups:
+      - name: Admin Applications
+        match: 'adminApplications'
+        intro: Registration of Microsoft Entra applications (service principals) as Power Platform management apps.
+      - name: Tenant Settings
+        match: 'TenantSettings|allowedConsentPlans|environmentKeywords|getConsumedQuota|exportServicePlans'
+        intro: Tenant-wide settings, consent plans, quota and licence export.
+      - name: Environment Role Assignments
+        match: 'roleAssignments|modifyRoleAssignments|/addUser$'
+        intro: Environment Admin and Environment Maker role assignments, and user sync into Dataverse.
+      - name: Environment Backup and Restore
+        match: '/backups|/restoreTo$|/copyTo$|/reset$'
+        intro: Backups, restore, copy and reset of environments.
+      - name: Customer-Managed Keys
+        match: '[Pp]rotectionKey|ProtectionStatus|lockAllEnvironments|/unlock$'
+        intro: Encryption key management for environments (customer-managed keys).
+      - name: Tenant-to-Tenant Migration
+        match: 't2t|TenantToTenant'
+        intro: Moving environments between tenants.
+      - name: Legacy CDS 1.0
+        match: 'CommonDataModel'
+        intro: Common Data Service 1.0 databases (retired product). Kept for completeness.
+      - name: Environment Provisioning Metadata
+        match: 'BusinessAppPlatform/locations|provisionInstance'
+        intro: Locations, currencies, languages and templates for environment and database provisioning.
+      - name: Environments
+        match: 'BusinessAppPlatform/(scopes/admin/)?(environments|deletedEnvironments|lifecycleOperations)'
+        intro: Environment lifecycle and properties.
+      - name: Apps
+        match: 'Microsoft\.PowerApps/(scopes/admin/)?(environments/[^/]+/)?(apps|deletedApps)|^\{powerAppsEndpoint\}/environments/.+/apps/|allowedThirdPartyApps|customAssets|generateTenantResourceStorage|Microsoft\.PowerApps/apps'
+        intro: Canvas app administration.
+      - name: Connectors and Connections
+        match: 'Microsoft\.PowerApps/(scopes/admin/)?(environments/[^/]+/)?(apis|connections)|Microsoft\.PowerApps/apis'
+        intro: Custom connectors, connections and their permissions.
+      - name: Flows
+        match: 'Microsoft\.ProcessSimple'
+        intro: Power Automate cloud flow administration on the Flow API host.
+      - name: Users and Reports
+        match: 'exportHiddenUserData|generateDataverseSecurityGroupEnforcementReport'
+        intro: User data export and enforcement reports.
+
+roles:
+  default: >-
+    Power Platform administrator (or Global administrator / Dynamics 365 administrator).
+    A Microsoft Entra application registered through Admin Applications acts with the same rights
+    as a Power Platform administrator [D: Learn, "Creating a service principal application using API"].
+  flow: >-
+    Power Platform administrator. Learn notes that service principals work for Flow APIs only
+    where no licence is required [D].
+  environment_scoped: >-
+    Power Platform administrator; an Environment Admin of the target environment is believed to be
+    sufficient for environment-scoped operations [I].
+
+official:
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments":
+    url: https://learn.microsoft.com/power-platform/admin/list-environments
+    title: List environments (preview)
+    differences:
+      - Learn shows api-version=2020-10-01; the module sends 2021-04-01 (Get-AdminPowerAppEnvironment -ApiVersion default).
+      - Learn shows $expand=properties.capacity,properties.addons; the module builds its own $expand from cmdlet switches and can add $filter clauses for CMK, instance id and SKU.
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/listTenantSettings":
+    url: https://learn.microsoft.com/power-platform/admin/list-tenantsettings
+    title: List tenant settings (preview)
+    differences:
+      - Learn shows api-version=2020-10-01; the module sends 2016-11-01.
+      - Learn spells the action listtenantsettings (lower case); the module uses listTenantSettings. Route matching is presumably case-insensitive [I].
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/adminApplications":
+    url: https://learn.microsoft.com/power-platform/admin/powerplatform-api-create-service-principal
+    title: Creating a service principal application using API (preview)
+    differences:
+      - Learn shows api-version=2020-10-01; the module sends 2020-06-01.
+  "PUT {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/adminApplications/{applicationId}":
+    url: https://learn.microsoft.com/power-platform/admin/powerplatform-api-create-service-principal
+    title: Creating a service principal application using API (preview)
+    differences:
+      - Learn shows api-version=2020-10-01; the module sends 2020-06-01.
+      - Learn requires a user (username/password or interactive) token for this call; a service principal cannot register itself.
+
+official_not_in_module:
+  - method: POST
+    url_template: https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentId}/addAppUser?api-version=2020-10-01
+    doc: https://learn.microsoft.com/power-platform/admin/create-dataverseapplicationuser
+    note: >-
+      Documented on Learn (create a Dataverse application user) but not called by module 2.0.219.
+      The module's Add-AdminPowerAppsSyncUser calls a different action, .../addUser, which is
+      documented here under Environment Role Assignments as undocumented.
+
+operations:
+  # ---------------------------------------------------------------- Policies (DLP, current schema)
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/policies":
+    name: List Policies
+    description: Lists the data policies (DLP) in the signed-in admin's tenant, current schema.
+    response: {type: PolicyList, basis: I}
+    caveats:
+      - "[S] The module requests $top=50 and InvokeApi follows nextLink until it is absent, concatenating value arrays."
+      - "[S] No api-version is sent. Get-DlpPolicy accepts -ApiVersion (default 2016-11-01) but the route has no {apiVersion} placeholder, so the value is never used."
+      - "[D] Policies read through PowerShell list only connectors that were explicitly classified; unmoved connectors in the default group are not returned, and connector display names can be stale (Learn: PowerShell support for Power Apps)."
+    sample_response:
+      value:
+        - name: 7b914a18-ad8b-4f15-8da5-3155c77aa70a
+          displayName: Tenant baseline
+          defaultConnectorsClassification: General
+          environmentType: ExceptEnvironments
+          environments:
+            - id: /providers/admin/environment/00000000-0000-0000-0000-000000000001
+              name: 00000000-0000-0000-0000-000000000001
+              type: Microsoft.BusinessAppPlatform/scopes/environments
+          connectorGroups:
+            - classification: Confidential
+              connectors:
+                - id: /providers/Microsoft.PowerApps/apis/shared_sharepointonline
+                  name: SharePoint
+                  type: providers/Microsoft.PowerApps/apis
+            - classification: General
+              connectors: []
+            - classification: Blocked
+              connectors: []
+          etag: '"00000000-0000-0000-0000-000000000000"'
+
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/policies/{policyName}":
+    name: Get Policy
+    description: Gets one data policy by its name (the policy GUID, not the display name).
+    response: {type: Policy, basis: I}
+    caveats:
+      - "[S] No api-version is sent (see List Policies)."
+      - "[D] policyName is the policy GUID returned by Get-DlpPolicy, not the display name."
+    sample_response_ref: Policy
+
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/policies":
+    name: Create Policy
+    description: Creates a data policy in the tenant.
+    request: {type: Policy, basis: S}
+    response: {type: Policy, basis: I}
+    caveats:
+      - "[S] New-DlpPolicy (Name parameter set) sends displayName, defaultConnectorsClassification (default General), connectorGroups: [], environmentType, environments (default []) and etag: null (Administration.PowerShell.psm1 ~7204-7218)."
+      - "[S] With -NewPolicy the caller's object is sent unchanged."
+      - "[I] Valid environmentType values are believed to be AllEnvironments, OnlyEnvironments and ExceptEnvironments. They are not listed in the module source or on Learn."
+    sample_request:
+      displayName: Tenant baseline
+      defaultConnectorsClassification: General
+      environmentType: AllEnvironments
+      environments: []
+      connectorGroups:
+        - classification: Confidential
+          connectors:
+            - id: /providers/Microsoft.PowerApps/apis/shared_sharepointonline
+              name: SharePoint
+              type: providers/Microsoft.PowerApps/apis
+        - classification: General
+          connectors: []
+        - classification: Blocked
+          connectors: []
+      etag: null
+
+  "PATCH {bapEndpoint}/providers/PowerPlatform.Governance/v1/policies/{policyName}":
+    name: Update Policy
+    description: Updates a data policy. The module always sends a complete policy object.
+    request: {type: Policy, basis: S}
+    response: {type: Policy, basis: I}
+    caveats:
+      - "[S] Set-DlpPolicy sends -UpdatedPolicy as the PATCH body unchanged."
+      - "[S] Add-ConnectorsToPolicy reads the policy with Get Policy, edits connectorGroups[].connectors in place, and PATCHes the whole object back (psm1 ~486-593). The module never sends a partial body."
+      - "[I] Treat PATCH as replacing connectorGroups: send the full object from Get Policy, including etag, rather than a delta. Partial-update semantics are unverified."
+      - "[S] No api-version is sent."
+    sample_request_ref: Policy
+
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/policies/{policyName}":
+    name: Delete Policy
+    description: Deletes a data policy.
+    caveats:
+      - "[S] Remove-DlpPolicy passes -Body $PolicyToDelete, a variable that is never assigned, so no body is sent."
+      - "[S] No api-version is sent."
+
+  # ---------------------------------------------------------- Policy Connector Configurations
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/policyconnectorconfigurations":
+    name: Get Connector Configurations
+    description: Gets the connector action rules and endpoint filtering rules of one data policy.
+    response: {type: ConnectorConfigurations, basis: D}
+    caveats: &cc_caveats
+      - "[S] No api-version is sent. The brief assumed api-version=2020-06-01; module 2.0.219 sends none."
+      - "[S] tenantId must be passed explicitly; the module does not read it from the token."
+    sample_response_ref: ConnectorConfigurations
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/policyconnectorconfigurations":
+    name: Create Connector Configurations
+    description: Creates connector configurations for a policy that has none yet.
+    request: {type: ConnectorConfigurations, basis: D}
+    response: {type: ConnectorConfigurations, basis: I}
+    caveats:
+      - "[S] No api-version is sent."
+      - "[D] For endpoint rules, the last rule per connector must be the * pattern, and order must run 1..N (Learn: Connector endpoint filtering)."
+      - "[I] Use Update Connector Configurations when the policy already has configurations; POST on an existing set is expected to fail."
+    sample_request_ref: ConnectorConfigurations
+  "PATCH {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/policyconnectorconfigurations":
+    name: Update Connector Configurations
+    description: Updates the connector configurations of a policy.
+    request: {type: ConnectorConfigurations, basis: D}
+    response: {type: ConnectorConfigurations, basis: I}
+    caveats:
+      - "[S] No api-version is sent."
+      - "[I] Send both connectorActionConfigurations and endpointConfigurations, taken from Get Connector Configurations; whether an omitted array is cleared or kept is unverified."
+    sample_request_ref: ConnectorConfigurations
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/policyconnectorconfigurations":
+    name: Delete Connector Configurations
+    description: Removes all connector configurations from a policy.
+    caveats: ["[S] No api-version is sent."]
+
+  # ---------------------------------------------------------- Policy Exempt Resources
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/exemptResources":
+    name: Get Exempt Resources
+    description: Gets the apps and flows exempted from one data policy.
+    response: {type: ExemptResources, basis: D}
+    caveats: ["[S] No api-version is sent."]
+    sample_response_ref: ExemptResources
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/exemptResources":
+    name: Create Exempt Resources
+    description: Creates the exempt resource list for a policy.
+    request: {type: ExemptResources, basis: D}
+    response: {type: ExemptResources, basis: D}
+    caveats:
+      - "[S] No api-version is sent."
+      - "[D] Resource id and type come from the app or flow object (Learn example uses $flow.Internal.id / .type)."
+    sample_request_ref: ExemptResources
+  "PATCH {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/exemptResources":
+    name: Update Exempt Resources
+    description: Replaces or updates the exempt resource list for a policy.
+    request: {type: ExemptResources, basis: D}
+    response: {type: ExemptResources, basis: I}
+    caveats: ["[S] No api-version is sent.", "[I] Send the complete exemptResources array."]
+    sample_request_ref: ExemptResources
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/exemptResources":
+    name: Delete Exempt Resources
+    description: Removes the exempt resource list from a policy.
+    caveats: ["[S] No api-version is sent."]
+
+  # ---------------------------------------------------------- URL Patterns
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/urlPatterns":
+    name: Get Policy URL Patterns
+    description: Gets the custom connector URL pattern rules of one tenant-level policy.
+    response: {type: UrlPatterns, basis: D}
+    caveats: ["[S] No api-version is sent.", "[D] Only tenant-level policies support URL patterns."]
+    sample_response_ref: UrlPatterns
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/urlPatterns":
+    name: Create Policy URL Patterns
+    description: Creates custom connector URL pattern rules for a tenant-level policy.
+    request: {type: UrlPatterns, basis: D}
+    response: {type: UrlPatterns, basis: I}
+    caveats: ["[S] No api-version is sent.", "[D] The * pattern must be the last rule."]
+    sample_request_ref: UrlPatterns
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/policies/{policyName}/urlPatterns":
+    name: Delete Policy URL Patterns
+    description: Removes the URL pattern rules from a policy.
+    caveats: ["[S] No api-version is sent."]
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/urlPatterns":
+    name: Get Tenant URL Patterns
+    description: Gets tenant-wide URL patterns.
+    response: {type: UrlPatterns, basis: I}
+    caveats: ["[S] No api-version is sent.", "[I] Tenant-wide patterns are not described on Learn; the shape is assumed to match policy URL patterns."]
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/urlPatterns":
+    name: Create Tenant URL Patterns
+    description: Creates tenant-wide URL patterns.
+    request: {type: UrlPatterns, basis: I}
+    caveats: ["[S] No api-version is sent."]
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/urlPatterns":
+    name: Delete Tenant URL Patterns
+    description: Removes tenant-wide URL patterns.
+    caveats: ["[S] No api-version is sent."]
+
+  # ---------------------------------------------------------- Connector Blocking Policy
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/connectorEnablementConfigurations":
+    name: List Connector Blocking Policies
+    description: Lists the tenant's connector blocking policy (normally at most one).
+    response: {type: ConnectorBlockingPolicyList, basis: I}
+    caveats: &cbp
+      - "[S] The cmdlets declare -ApiVersion default 2020-06-01, but the route has no {apiVersion} placeholder, so no api-version is sent."
+      - "[S] The brief's path …/v1/connectorBlockingPolicies/{policyId} does not exist in 2.0.219; the real path is tenants/{tenantId}/connectorEnablementConfigurations."
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/connectorEnablementConfigurations/{policyId}":
+    name: Get Connector Blocking Policy
+    description: Gets the connector blocking policy by id.
+    response: {type: ConnectorBlockingPolicy, basis: I}
+    caveats: *cbp
+    sample_response_ref: ConnectorBlockingPolicy
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/connectorEnablementConfigurations":
+    name: Create Connector Blocking Policy
+    description: Creates the tenant's connector blocking policy if none exists.
+    request: {type: ConnectorBlockingPolicy, basis: D}
+    response: {type: ConnectorBlockingPolicy, basis: I}
+    caveats:
+      - "[S] No api-version is sent."
+      - "[S] Before sending, the cmdlet rejects any connectorSettings[].id whose last segment is in a hard-coded list of always-enabled connectors (about 60, e.g. shared_sharepointonline, shared_office365, shared_teams, Http). Calling the REST route directly skips this client-side check; server behaviour for those ids is unverified (psm1 IsConnectorBlockingPolicyDefinitionValid, ~11618)."
+    sample_request_ref: ConnectorBlockingPolicy
+  "PATCH {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/connectorEnablementConfigurations/{policyId}":
+    name: Update Connector Blocking Policy
+    description: Updates the connector blocking policy.
+    request: {type: ConnectorBlockingPolicy, basis: D}
+    response: {type: ConnectorBlockingPolicy, basis: I}
+    caveats:
+      - "[S] No api-version is sent."
+      - "[S] Same client-side always-enabled connector check as Create."
+    sample_request_ref: ConnectorBlockingPolicy
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/connectorEnablementConfigurations/{policyId}":
+    name: Delete Connector Blocking Policy
+    description: Deletes the connector blocking policy.
+    caveats: ["[S] No api-version is sent."]
+
+  # ---------------------------------------------------------- Error settings
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/errorSettings":
+    name: Get Error Settings
+    description: Gets the governance error message content for the tenant.
+    response: {type: ErrorSettings, basis: D}
+    caveats: &es ["[S] No api-version is sent.", "[S] Called by both Get-PowerAppDlpErrorSettings and Get-GovernanceErrorSettings (same route)."]
+    sample_response_ref: ErrorSettings
+  "POST {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/errorSettings":
+    name: Create Error Settings
+    description: Sets governance error message content for the tenant.
+    request: {type: ErrorSettings, basis: D}
+    response: {type: ErrorSettings, basis: I}
+    caveats: ["[S] No api-version is sent.", "[D] Learn's example uses PascalCase keys (ErrorMessageDetails, ContactDetails); ConvertTo-Json keeps that casing. Camel case is assumed equivalent [I]."]
+    sample_request_ref: ErrorSettings
+  "PATCH {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/errorSettings":
+    name: Update Error Settings
+    description: Updates governance error message content.
+    request: {type: ErrorSettings, basis: D}
+    response: {type: ErrorSettings, basis: I}
+    caveats: ["[S] No api-version is sent."]
+    sample_request_ref: ErrorSettings
+  "DELETE {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/errorSettings":
+    name: Delete Error Settings
+    description: Removes governance error message content.
+    caveats: ["[S] No api-version is sent."]
+
+  # ---------------------------------------------------------- Tenant isolation
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/tenantIsolationPolicy":
+    name: Get Tenant Isolation Policy
+    description: Gets the cross-tenant isolation policy.
+    response: {type: TenantIsolationPolicy, basis: I}
+  "PUT {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/tenantIsolationPolicy":
+    name: Update Tenant Isolation Policy
+    description: Replaces the cross-tenant isolation policy.
+    request: {type: TenantIsolationPolicy, basis: I}
+    caveats:
+      - "[S] Set-PowerAppTenantIsolationPolicy sends -TenantIsolationPolicy unchanged; the module never builds this object, so its shape is not in the source."
+      - "[I] The existence of Get Tenant Isolation Operation Status suggests the PUT can complete asynchronously; how the operation id is returned is unverified."
+      - "[D] The admin center limits the allow list to 500 rules."
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/tenants/{tenantId}/tenantIsolationPolicy/operations/{operationId}":
+    name: Get Tenant Isolation Operation Status
+    description: Gets the status of a tenant isolation policy update.
+    caveats: ["[S] Called with InvokeApiNoParseContent, so the cmdlet returns the raw HTTP response."]
+
+  # ---------------------------------------------------------- Governance connectors
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/connectors/{connectorName}/actions":
+    name: List Connector Actions
+    description: Lists a connector's actions, for use in connector action rules.
+    caveats: ["[S] Get-AdminPowerAppConnectorAction drops entries whose properties.trigger is set, so triggers are hidden from the cmdlet output but present in the response."]
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/environments/{environmentName}/connectors/{connectorName}/actions":
+    name: List Environment Connector Actions
+    description: Lists a connector's actions within one environment (used for custom connectors).
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/connectors":
+    name: List Desktop Flow Modules
+    description: Lists governance connectors filtered to connectorType eq 'DesktopFlow' (desktop flow modules).
+    caveats: ["[S] Called through Invoke-Request directly, bypassing InvokeApi: no nextLink paging, no api-version."]
+  "GET {bapEndpoint}/providers/PowerPlatform.Governance/v1/connectors/metadata/virtual":
+    name: List Virtual Connectors
+    description: Lists virtual connectors (non-API controls that appear in data policies).
+    caveats: ["[S] Called through Invoke-Request directly: no paging, no api-version."]
+
+  # ---------------------------------------------------------- DLP enforcement
+  "POST {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/reevaluateconnectionsdlp":
+    name: Reevaluate Connections In Tenant
+    description: Starts a background job that disables connections violating data policies and re-enables connections that no longer violate them, across the tenant.
+    responses_override:
+      - {code: 202 Accepted, type: '', description: "Job created. The cmdlet treats 202 as success [S]; Learn says the tenant job may take a few hours [D]."}
+  "POST {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/reevaluateconnectionsdlp":
+    name: Reevaluate Connections In Environment
+    description: Starts the same enforcement job for one environment.
+    responses_override:
+      - {code: 202 Accepted, type: '', description: "Job created. The cmdlet treats 202 as success [S]."}
+
+  # ---------------------------------------------------------- Legacy API policies
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/apiPolicies":
+    name: List Legacy Policies
+    description: Lists legacy-schema DLP policies (tenant and environment scoped).
+    response: {type: LegacyApiPolicyList, basis: I}
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/apiPolicies":
+    name: Create Legacy Tenant Policy
+    description: Creates a tenant-scoped legacy DLP policy.
+    request: {type: LegacyApiPolicy, basis: S}
+    response: {type: LegacyApiPolicy, basis: I}
+    caveats: &legacy_create
+      - "[S] New-AdminDlpPolicy builds the full object itself: two API groups (hbi \"Business data only\", lbi \"No business data allowed\"), defaultApiGroup lbi, and a dataFlowRule blocking hbi→lbi (psm1 ~6745-6890)."
+      - "[S] -BlockNonBusinessDataGroup adds an apiGroupRule blocking lbi, appends \"(PREVIEW: BlockNonBusinessDataGroup)\" to the display name, and first lists every connector in the environment to seed hbi."
+      - "[S] $schema is https://schema.management.azure.com/providers/Microsoft.BusinessAppPlatform/schemas/{schemaVersion}/apiPolicyDefinition.json# with schemaVersion 2016-10-01-preview (default) or 2018-11-01."
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}/apiPolicies":
+    name: Create Legacy Environment Policy
+    description: Creates an environment-scoped legacy DLP policy.
+    request: {type: LegacyApiPolicy, basis: S}
+    response: {type: LegacyApiPolicy, basis: I}
+    caveats: *legacy_create
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/apiPolicies/{policyName}":
+    name: Get Legacy Tenant Policy
+    description: Gets a tenant-scoped legacy DLP policy.
+    response: {type: LegacyApiPolicy, basis: S}
+    caveats: &legacy_ver ["[S] api-version differs by cmdlet: 2016-11-01 (Set-AdminDlpPolicy and related) and 2018-01-01 (Add-/Remove-ConnectorToBusinessDataGroup, Add-/Remove-CustomConnector*)."]
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}/apiPolicies/{policyName}":
+    name: Get Legacy Environment Policy
+    description: Gets an environment-scoped legacy DLP policy.
+    response: {type: LegacyApiPolicy, basis: S}
+    caveats: *legacy_ver
+  "PUT {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/apiPolicies/{policyName}":
+    name: Update Legacy Tenant Policy
+    description: Replaces a tenant-scoped legacy DLP policy.
+    request: {type: LegacyApiPolicy, basis: S}
+    caveats: &legacy_put
+      - "[S] Every cmdlet that writes a legacy policy first GETs it, edits properties.definition (apiGroups.hbi/lbi.apis, constraints, defaultApiGroup, rules.apiGroupRule, $schema) and PUTs the whole object back. Send the full object."
+      - "[S] api-version is 2016-11-01 or 2018-01-01 depending on the cmdlet."
+  "PUT {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}/apiPolicies/{policyName}":
+    name: Update Legacy Environment Policy
+    description: Replaces an environment-scoped legacy DLP policy.
+    request: {type: LegacyApiPolicy, basis: S}
+    caveats: *legacy_put
+  "DELETE {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/apiPolicies/{policyName}":
+    name: Delete Legacy Tenant Policy
+    description: Deletes a tenant-scoped legacy DLP policy.
+  "DELETE {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}/apiPolicies/{policyName}":
+    name: Delete Legacy Environment Policy
+    description: Deletes an environment-scoped legacy DLP policy.
+
+  # ---------------------------------------------------------- Copilot governance
+  "GET {powerPlatformEndpoint}/copilotgovernance/settings/{settingName}":
+    name: Get Copilot Governance Setting
+    description: Gets one Copilot governance setting for an environment.
+    caveats: &copilot
+      - "[S] The host is per environment: the environment id is lower-cased, dashes removed, and split so its last two characters become their own label: {environmentIdPrefix}.{environmentIdSuffix}.environment.api.powerplatform.com (GetCopilotGovernanceSettingRoute, psm1 ~10116)."
+      - "[S] settingName must match ^[A-Za-z0-9_]{1,128}$ and is URL-escaped; the environment id must normalise to 32 hex characters."
+      - "[S] Default api-version is 1, and -ApiVersion is validated against ^(\\d{1,4}(\\.\\d{1,4})?|\\d{4}-\\d{2}-\\d{2}(-preview)?)$."
+      - "[S] Token audience is https://api.powerplatform.com (no trailing slash), not the BAP audience."
+  "PUT {powerPlatformEndpoint}/copilotgovernance/settings/{settingName}":
+    name: Update Copilot Governance Setting
+    description: Sets one Copilot governance setting for an environment.
+    caveats: *copilot
+
+definitions:
+  Policy:
+    description: A data policy (DLP) in the current schema, as sent and received on PowerPlatform.Governance/v1/policies.
+    fields:
+      - {name: name, type: string, basis: I, description: "Policy id (GUID). Learn calls the GUID the PolicyName; the property name is assumed."}
+      - {name: displayName, type: string, basis: S, description: Display name. Sent by New-DlpPolicy.}
+      - {name: defaultConnectorsClassification, type: Classification, basis: S, description: "Group for connectors not explicitly classified. New-DlpPolicy default: General."}
+      - {name: connectorGroups, type: "ConnectorGroup[]", basis: S, description: "One entry per classification. Read and edited by Add-ConnectorsToPolicy."}
+      - {name: environmentType, type: EnvironmentType, basis: S, description: Which environments the policy covers. Sent by New-DlpPolicy; allowed values are inferred.}
+      - {name: environments, type: "EnvironmentRef[]", basis: S, description: Environments included or excluded according to environmentType. New-DlpPolicy default empty array.}
+      - {name: etag, type: string, basis: S, description: "Concurrency token. New-DlpPolicy sends null on create."}
+      - {name: createdBy, type: object, basis: I, description: Creator principal (read-only).}
+      - {name: createdTime, type: string (date-time), basis: I, description: Read-only.}
+      - {name: lastModifiedBy, type: object, basis: I, description: Read-only.}
+      - {name: lastModifiedTime, type: string (date-time), basis: I, description: Read-only.}
+    sample:
+      name: 7b914a18-ad8b-4f15-8da5-3155c77aa70a
+      displayName: Tenant baseline
+      defaultConnectorsClassification: General
+      environmentType: AllEnvironments
+      environments: []
+      connectorGroups:
+        - classification: Confidential
+          connectors:
+            - id: /providers/Microsoft.PowerApps/apis/shared_sharepointonline
+              name: SharePoint
+              type: providers/Microsoft.PowerApps/apis
+        - classification: General
+          connectors:
+            - id: /providers/Microsoft.PowerApps/apis/shared_msnweather
+              name: MSN Weather
+              type: providers/Microsoft.PowerApps/apis
+        - classification: Blocked
+          connectors: []
+      etag: '"00000000-0000-0000-0000-000000000000"'
+  PolicyList:
+    description: Page of policies. InvokeApi follows nextLink and merges value arrays.
+    fields:
+      - {name: value, type: "Policy[]", basis: S, description: Read by InvokeApi paging.}
+      - {name: nextLink, type: string, basis: S, description: Next page URL; absent on the last page.}
+  ConnectorGroup:
+    description: Connectors sharing one classification inside a policy.
+    fields:
+      - {name: classification, type: Classification, basis: S, description: "Group name. Add-ConnectorsToPolicy ValidateSet: General, Confidential, Blocked."}
+      - {name: connectors, type: "ConnectorRef[]", basis: S, description: Connectors in the group.}
+  ConnectorRef:
+    description: Reference to a connector inside a policy group.
+    fields:
+      - {name: id, type: string, basis: S, description: "Connector resource id, e.g. /providers/Microsoft.PowerApps/apis/shared_msnweather [D]."}
+      - {name: name, type: string, basis: S, description: Connector display name.}
+      - {name: type, type: string, basis: S, description: "Resource type, e.g. providers/Microsoft.PowerApps/apis [D]."}
+  EnvironmentRef:
+    description: Reference to an environment inside a policy.
+    fields:
+      - {name: id, type: string, basis: I, description: Environment resource id.}
+      - {name: name, type: string, basis: I, description: Environment name (GUID).}
+      - {name: type, type: string, basis: I, description: "Resource type, e.g. Microsoft.BusinessAppPlatform/scopes/environments."}
+  Classification:
+    description: Connector group classification.
+    enum:
+      - {value: Confidential, basis: S, description: Business group.}
+      - {value: General, basis: S, description: Non-business group.}
+      - {value: Blocked, basis: S, description: Blocked group.}
+  EnvironmentType:
+    description: Policy scope. Values not present in module source or Learn.
+    enum:
+      - {value: AllEnvironments, basis: I, description: All environments in the tenant.}
+      - {value: OnlyEnvironments, basis: I, description: Only the listed environments.}
+      - {value: ExceptEnvironments, basis: I, description: All except the listed environments.}
+  ConnectorConfigurations:
+    description: Per-policy connector action rules and endpoint filtering rules (Learn, Connector action control / Connector endpoint filtering).
+    fields:
+      - {name: connectorActionConfigurations, type: "ConnectorActionConfiguration[]", basis: D, description: One entry per connector.}
+      - {name: endpointConfigurations, type: "EndpointConfiguration[]", basis: D, description: One entry per connector.}
+    sample:
+      connectorActionConfigurations:
+        - connectorId: /providers/Microsoft.PowerApps/apis/shared_msnweather
+          actionRules:
+            - {actionId: TodaysForecast, behavior: Block}
+            - {actionId: CurrentWeather, behavior: Block}
+          defaultConnectorActionRuleBehavior: Allow
+      endpointConfigurations:
+        - connectorId: /providers/Microsoft.PowerApps/apis/shared_sql
+          endpointRules:
+            - {order: 1, endpoint: "myservername.database.windows.net,testdatabase", behavior: Deny}
+            - {order: 2, endpoint: "myservername.database.windows.net,*", behavior: Allow}
+            - {order: 3, endpoint: "*", behavior: Deny}
+  ConnectorActionConfiguration:
+    fields:
+      - {name: connectorId, type: string, basis: D, description: Connector id.}
+      - {name: actionRules, type: "ActionRule[]", basis: D, description: One entry per action.}
+      - {name: defaultConnectorActionRuleBehavior, type: string, basis: D, description: "Allow or Block, for actions without a rule (including future actions)."}
+  ActionRule:
+    fields:
+      - {name: actionId, type: string, basis: D, description: Operation id from List Connector Actions.}
+      - {name: behavior, type: string, basis: D, description: Allow or Block.}
+  EndpointConfiguration:
+    fields:
+      - {name: connectorId, type: string, basis: D, description: Connector id.}
+      - {name: endpointRules, type: "EndpointRule[]", basis: D, description: Ordered rules; the last must be *.}
+  EndpointRule:
+    fields:
+      - {name: order, type: integer, basis: D, description: 1..N.}
+      - {name: endpoint, type: string, basis: D, description: "Endpoint pattern; format depends on the connector (URL, server,database, host:port)."}
+      - {name: behavior, type: string, basis: D, description: Allow or Deny.}
+  ExemptResources:
+    description: Apps and flows exempt from a policy (Learn, Data resource exemption cmdlets).
+    fields:
+      - {name: exemptResources, type: "ResourceRef[]", basis: D, description: Exempted resources.}
+    sample:
+      exemptResources:
+        - id: /providers/Microsoft.ProcessSimple/environments/Default-00000000-0000-0000-0000-000000000000/flows/f239652e-dd38-4826-a1de-90a2aea584d9
+          type: Microsoft.ProcessSimple/environments/flows
+        - id: /providers/Microsoft.PowerApps/apps/06002625-7154-4417-996e-21d7a60ad624
+          type: Microsoft.PowerApps/apps
+  ResourceRef:
+    fields:
+      - {name: id, type: string, basis: D, description: App or flow resource id.}
+      - {name: type, type: string, basis: D, description: "Resource type, e.g. Microsoft.ProcessSimple/environments/flows."}
+  UrlPatterns:
+    description: Ordered custom connector URL pattern rules (Learn, Data policies for custom connectors).
+    fields:
+      - {name: rules, type: "UrlPatternRule[]", basis: D, description: Ordered rules; * last.}
+    sample:
+      rules:
+        - {order: 1, customConnectorRuleClassification: Confidential, pattern: "https://www.mycompany.com"}
+        - {order: 2, customConnectorRuleClassification: General, pattern: "https://www.bing.com"}
+        - {order: 3, customConnectorRuleClassification: Blocked, pattern: "*"}
+  UrlPatternRule:
+    fields:
+      - {name: order, type: integer, basis: D, description: Starts at 1.}
+      - {name: customConnectorRuleClassification, type: string, basis: D, description: "General, Confidential, Blocked or Ignore (Ignore only on the final * rule)."}
+      - {name: pattern, type: string, basis: D, description: Host URL pattern.}
+  ConnectorBlockingPolicy:
+    description: Tenant connector blocking (enablement) definition (Learn, New connectors disabled by default).
+    fields:
+      - {name: connectorSettings, type: "ConnectorSetting[]", basis: D, description: "One entry per connector. The cmdlet reads ConnectorSettings[].id [S]."}
+      - {name: id, type: string, basis: I, description: Policy id returned by the service; Learn says Get output includes the policyId.}
+    sample:
+      connectorSettings:
+        - {id: /providers/Microsoft.PowerApps/apis/shared_twitter, behavior: Deny, isReviewed: true}
+        - {id: /providers/Microsoft.PowerApps/apis/shared_github, behavior: Allow, isReviewed: true}
+  ConnectorBlockingPolicyList:
+    fields:
+      - {name: value, type: "ConnectorBlockingPolicy[]", basis: I, description: Policies (normally zero or one).}
+  ConnectorSetting:
+    fields:
+      - {name: id, type: string, basis: D, description: "Connector id. Its last segment is checked against the always-enabled list [S]."}
+      - {name: behavior, type: string, basis: D, description: Allow or Deny.}
+      - {name: isReviewed, type: boolean, basis: D, description: Whether an admin has reviewed the connector.}
+  ErrorSettings:
+    description: Governance error message content (Learn, Governance error message content commands).
+    fields:
+      - {name: errorMessageDetails, type: object, basis: D, description: "{ enabled: boolean, url: string }: link to governance material."}
+      - {name: contactDetails, type: object, basis: D, description: "{ enabled: boolean, email: string }: governance contact."}
+    sample:
+      errorMessageDetails: {enabled: true, url: "https://contoso.org/governanceMaterial"}
+      contactDetails: {enabled: true, email: admin@contoso.com}
+  TenantIsolationPolicy:
+    description: Cross-tenant isolation policy. Shape not present in module source or Learn; fields below are assumptions.
+    fields:
+      - {name: properties.isDisabled, type: boolean, basis: I, description: False when isolation is on.}
+      - {name: properties.allowedTenants, type: "object[]", basis: I, description: "Allow list entries: tenantId plus direction { inbound, outbound }. Learn documents the concept (inbound/outbound, * for all tenants) but not the JSON."}
+  LegacyApiPolicy:
+    description: Legacy DLP policy object built by New-AdminDlpPolicy (all fields read from the source literal).
+    fields:
+      - {name: id, type: string, basis: S, description: Empty on create.}
+      - {name: name, type: string, basis: S, description: Empty on create; policy GUID afterwards.}
+      - {name: type, type: string, basis: S, description: "Microsoft.BusinessAppPlatform/scopes/apiPolicies or …/scopes/environments/apiPolicies."}
+      - {name: tags, type: object, basis: S, description: Empty object.}
+      - {name: properties.createdTime, type: string (date-time), basis: S, description: Client timestamp (Get-Date -Format o).}
+      - {name: properties.displayName, type: string, basis: S, description: Display name.}
+      - {name: "properties.definition.$schema", type: string, basis: S, description: apiPolicyDefinition.json schema URL.}
+      - {name: properties.definition.defaultApiGroup, type: string, basis: S, description: hbi or lbi.}
+      - {name: properties.definition.constraints, type: object, basis: S, description: "Optional environmentFilter1 { type: environmentFilter, parameters { filterType: include|exclude, environments: [{id,name,type}] } }."}
+      - {name: properties.definition.apiGroups.hbi, type: object, basis: S, description: "{ description, apis: [{id,name,type}] }: business data group."}
+      - {name: properties.definition.apiGroups.lbi, type: object, basis: S, description: "{ description, apis: [...] }: non-business group."}
+      - {name: properties.definition.rules.dataFlowRule, type: object, basis: S, description: "Blocks data flow hbi → lbi: { type: DataFlowRestriction, parameters { sourceApiGroup: hbi, destinationApiGroup: lbi }, actions { blockAction { type: Block } } }."}
+      - {name: properties.definition.rules.apiGroupRule, type: object, basis: S, description: "Optional; blocks the lbi group: { type: ApiGroupRestriction, parameters { apiGroup: lbi }, actions { blockAction { type: Block } } }."}
+  LegacyApiPolicyList:
+    fields:
+      - {name: value, type: "LegacyApiPolicy[]", basis: S, description: Read by Get-FilteredApiPolicies.}
+  ErrorResponse:
+    description: Error body as read by the REST client (Invoke-Request reads $error.Error.Message; CreateHttpResponse also surfaces error and errors).
+    fields:
+      - {name: error.code, type: string, basis: S, description: Read by CreatePreflightResponse.}
+      - {name: error.message, type: string, basis: S, description: Read by Invoke-Request.}
+      - {name: errors, type: "object[]", basis: S, description: Surfaced by CreateHttpResponse when present.}
+
+# Names for operations that have no full curated entry (auto names were unclear).
+names:
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/allowedConsentPlans": Get Allowed Consent Plans
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/allowedConsentPlans": Add Allowed Consent Plans
+  "DELETE {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/allowedConsentPlans/{planType}": Remove Allowed Consent Plans
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/exportServicePlans": Start Licence Export
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/exportServicePlans": Get Licence Export
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environmentKeywords/~sharepointform": Get SharePoint Form Environment
+  "PUT {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environmentKeywords/~sharepointform": Set SharePoint Form Environment
+  "DELETE {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environmentKeywords/~sharepointform": Reset SharePoint Form Environment
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}/addUser": Add User To Environment
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/environments/{environmentName}/copyTo": Copy Environment
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/environments/{environmentName}/restoreTo": Restore Environment
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/locations/{location}/protectionKeys/~active": Get Active Protection Key
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrationapprovals": List Migration Approval Requests
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrations": List Migration Requests
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/environments/{environmentName}/createt2t": Submit Migration Request
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrationapprovals/{approvalRequestId}/approve": Approve Migration Request
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrationapprovals/{approvalRequestId}/reject": Reject Migration Request
+  "DELETE {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrations/{migrationId}/delete": Delete Migration Request
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrations/{migrationId}/get": Get Migration Status
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrations/{migrationId}/migrate": Migrate Environment
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/t2tmigrations/{migrationId}/prepare": Prepare Migration
+  "GET {cdsOneEndpoint}/providers/Microsoft.CommonDataModel/namespaces": List CDS 1.0 Databases
+  "GET api.cds.microsoft.com/providers/Microsoft.CommonDataModel/namespaces/{databaseId}": Get CDS 1.0 Database
+  "DELETE api.cds.microsoft.com/providers/Microsoft.CommonDataModel/namespaces/{databaseId}": Delete CDS 1.0 Database
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/environments/{environmentName}": Get Environment (non-admin scope)
+  "PATCH {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/environments/{environmentName}": Update Environment (non-admin scope)
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/environments/{environmentName}/governanceConfiguration": Set Governance Configuration
+  "GET {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}": Get Environment
+  "PATCH {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}": Update Environment
+  "POST {bapEndpoint}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/{environmentName}/validateDelete": Validate Environment Delete
+  "GET {powerAppsEndpoint}/environments/{environmentName}/apps/{appName}": Get App (environment path)
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/apps/{appName}": Get App (maker scope)
+  "PUT {powerAppsEndpoint}/providers/Microsoft.PowerApps/apps/{appName}": Update App Definition
+  "POST {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/customAssets/{mobileType}": Upload Branding Asset
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apps/{appName}": Get App
+  "POST {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apps/{appName}/modifyPermissions": Modify App Permissions
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apps/{appName}/permissions": List App Permissions
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/apis": List Connectors (maker scope)
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis": List Custom Connectors
+  "DELETE {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis/{connectorName}": Delete Custom Connector
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/connections": List Connections
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis/{connectorName}/connections": List Connector Connections
+  "POST {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis/{connectorName}/modifyPermissions": Modify Connector Permissions
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis/{connectorName}/permissions": List Connector Permissions
+  "POST {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis/{connectorName}/connections/{connection}/modifyPermissions": Modify Connection Permissions
+  "GET {powerAppsEndpoint}/providers/Microsoft.PowerApps/scopes/admin/environments/{environmentName}/apis/{connectorName}/connections/{connection}/permissions": List Connection Permissions
+  "GET {flowEndpoint}/providers/Microsoft.ProcessSimple/environments/{environmentName}/cmkstatus": Get Environment CMK Status
+  "GET {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/users/{userId}": Get Flow User Details
+  "DELETE {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/users/{userId}": Delete Flow User Details
+  "POST {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/cancelRgMigration": Cancel EUDB Migration
+  "POST {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/migrateFlows": Add Flows To Solution
+  "POST {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/migrateResourceGroup": Start EUDB Migration
+  "POST {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/flows/{flowName}/modifyPermissions": Modify Flow Permissions
+  "GET {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/flows/{flowName}/permissions": List Flow Owner Roles
+  "GET {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/flows/{flowName}/runs": List Flow Runs
+  "DELETE {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/users/{currentUserId}/approvals": Delete User Approvals
+  "GET {flowEndpoint}/providers/Microsoft.ProcessSimple/scopes/admin/environments/{environmentName}/operationTypes/ResourceGroupMigration/v1/operations/{operationId}": Get EUDB Migration Status

@@ -1,0 +1,644 @@
+<title>BAP Admin API Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: reference manual. Sticky left index by operation group, one operation per view, Learn REST section order. */
+:root {
+  --bg: #f5f6f3;
+  --surface: #ffffff;
+  --sunken: #eceee9;
+  --fg: #1c2126;
+  --muted: #5a6570;
+  --line: #d9ddd6;
+  --accent: #0d6670;
+  --accent-soft: #dcefef;
+  --warn-bg: #fff3d1;
+  --warn-fg: #5e4300;
+  --warn-line: #e8c96a;
+  --get: #1d7247; --post: #9a5800; --put: #2453ad; --patch: #6f42a8; --delete: #ad2129;
+  --basis-s: #1d7247; --basis-d: #2453ad; --basis-i: #9a5800;
+  --code-bg: #f0f2ee;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --nav-w: 300px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121618; --surface: #191e21; --sunken: #20272a; --fg: #e1e6e3; --muted: #97a3aa; --line: #2c3539;
+    --accent: #5fbcc5; --accent-soft: #173538; --warn-bg: #2e2510; --warn-fg: #f0d58c; --warn-line: #6b5520;
+    --get: #5cc48d; --post: #e0a24a; --put: #7ea4f0; --patch: #b996ea; --delete: #ef7b80;
+    --basis-s: #5cc48d; --basis-d: #7ea4f0; --basis-i: #e0a24a; --code-bg: #1f2629; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121618; --surface: #191e21; --sunken: #20272a; --fg: #e1e6e3; --muted: #97a3aa; --line: #2c3539;
+  --accent: #5fbcc5; --accent-soft: #173538; --warn-bg: #2e2510; --warn-fg: #f0d58c; --warn-line: #6b5520;
+  --get: #5cc48d; --post: #e0a24a; --put: #7ea4f0; --patch: #b996ea; --delete: #ef7b80;
+  --basis-s: #5cc48d; --basis-d: #7ea4f0; --basis-i: #e0a24a; --code-bg: #1f2629; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--code-bg); padding: 0.08em 0.35em; border-radius: 3px; overflow-wrap: anywhere; }
+
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topbar-inner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; }
+.brand { font-weight: 700; letter-spacing: -0.01em; font-size: 1.05rem; color: var(--fg); text-decoration: none; }
+.brand span { color: var(--muted); font-weight: 500; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
+.chip.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-line); }
+.chip.ok { color: var(--basis-s); border-color: currentColor; }
+.chip.doc { color: var(--basis-d); border-color: currentColor; }
+.chip.inf { color: var(--basis-i); border-color: currentColor; }
+.banner { background: var(--warn-bg); color: var(--warn-fg); border-bottom: 1px solid var(--warn-line); padding: 8px 16px; font-size: 0.86rem; }
+.banner strong { font-weight: 700; }
+
+.shell { display: grid; grid-template-columns: var(--nav-w) minmax(0, 1fr); min-height: 100vh; }
+nav.index { border-right: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 12px 0 40px; }
+.search { padding: 0 12px 10px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.search input { width: 100%; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; font-size: 0.88rem; }
+.nav-fixed a, .nav-op { display: flex; gap: 8px; align-items: baseline; padding: 3px 14px; color: var(--fg); text-decoration: none; font-size: 0.86rem; border-left: 3px solid transparent; }
+.nav-fixed a:hover, .nav-op:hover { background: var(--sunken); }
+.nav-fixed a.active, .nav-op.active { border-left-color: var(--accent); background: var(--accent-soft); }
+.nav-section { margin: 14px 14px 2px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.nav-group > summary { list-style: none; cursor: pointer; padding: 5px 14px; font-weight: 600; font-size: 0.88rem; display: flex; justify-content: space-between; gap: 8px; }
+.nav-group > summary::-webkit-details-marker { display: none; }
+.nav-group > summary .count { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.nav-op .m { flex: 0 0 3.6em; }
+.verb { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em; }
+.verb.GET { color: var(--get); } .verb.POST { color: var(--post); } .verb.PUT { color: var(--put); } .verb.PATCH { color: var(--patch); } .verb.DELETE { color: var(--delete); }
+.nav-toggle { display: none; }
+
+main { padding-block: 24px 80px; padding-inline: 32px; min-width: 0; }
+.doc { max-width: 980px; }
+.crumbs { font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; }
+h1 { font-size: 1.85rem; line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 10px; text-wrap: balance; }
+h2 { font-size: 1.22rem; margin: 34px 0 10px; padding-top: 6px; border-top: 1px solid var(--line); text-wrap: balance; }
+h3 { font-size: 1rem; margin: 22px 0 8px; }
+p, li { max-width: 72ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+.reqline { display: flex; align-items: flex-start; gap: 10px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin: 12px 0; }
+.reqline .verb { font-size: 0.82rem; padding-top: 1px; }
+.reqline .url { font-family: var(--font-mono); font-size: 0.84rem; overflow-wrap: anywhere; flex: 1; min-width: 0; }
+.copy { font: inherit; font-size: 0.75rem; padding: 2px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.copy:hover { color: var(--fg); }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); margin: 8px 0 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.87rem; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; background: var(--sunken); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.name { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+td.num { font-variant-numeric: tabular-nums; }
+.basis { display: inline-block; min-width: 1.5em; text-align: center; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
+.basis.S { color: var(--basis-s); } .basis.D { color: var(--basis-d); } .basis.I { color: var(--basis-i); }
+.conf { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 0.86rem; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+.conf dt { color: var(--muted); }
+.conf dd { margin: 0; }
+.note { font-size: 0.86rem; color: var(--muted); }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+.callout.warn { border-left-color: var(--warn-line); background: var(--warn-bg); color: var(--warn-fg); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; overflow-x: auto; margin: 6px 0 12px; line-height: 1.45; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-top: 10px; flex-wrap: wrap; }
+.tabs button { font: inherit; font-size: 0.85rem; padding: 6px 12px; border: 1px solid transparent; border-bottom: 0; background: none; color: var(--muted); cursor: pointer; border-radius: 6px 6px 0 0; }
+.tabs button[aria-selected="true"] { color: var(--fg); background: var(--code-bg); border-color: var(--line); }
+.tabpanel pre { border-top-left-radius: 0; margin-top: 0; }
+.caveats li { margin-bottom: 6px; }
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 44px; flex-wrap: wrap; }
+.pager a { text-decoration: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; background: var(--surface); font-size: 0.88rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.stat b { display: block; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.8rem; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.86rem; }
+.ok-cell { color: var(--basis-s); font-weight: 600; }
+.bad-cell { color: var(--delete); font-weight: 600; }
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  nav.index { position: static; height: auto; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); display: none; }
+  nav.index.open { display: block; }
+  .nav-toggle { display: inline-flex; }
+  main { padding-inline: 16px; }
+  h1 { font-size: 1.45rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="copy nav-toggle" id="navToggle" aria-expanded="false" aria-controls="index">Index</button>
+    <a class="brand" href="#overview">BAP Admin API <span>reference</span></a>
+    <span class="chip warn">Unofficial</span>
+    <span class="chip">Microsoft.PowerApps.Administration.PowerShell __MODULE_VERSION__</span>
+    <a class="chip" href="https://github.com/Saavuori/PowerPlatformAdminAPI" target="_blank" rel="noopener" style="margin-left:auto">Source on GitHub ↗</a>
+  </div>
+  <div class="banner" role="note"><strong>Unofficial. May change without notice.</strong> Reverse-documented from the PowerShell module source, not from Microsoft. Every page states what is verified from source, documented on Learn, or inferred.</div>
+</header>
+
+<div class="shell">
+  <nav class="index" id="index" aria-label="Operations">
+    <div class="search"><label class="note" for="q" style="display:block;margin-bottom:4px">Filter by name, path or cmdlet</label><input id="q" type="search" placeholder="e.g. policies, Set-DlpPolicy" autocomplete="off"></div>
+    <div class="nav-fixed">
+      <a href="#overview" data-id="overview">Overview</a>
+      <a href="#concepts" data-id="concepts">Common concepts</a>
+      <a href="#verification" data-id="verification">Verification</a>
+      <a href="#definitions" data-id="definitions">Definitions</a>
+    </div>
+    <div id="navtree"></div>
+  </nav>
+  <main id="main" tabindex="-1"><div class="doc" id="doc"></div></main>
+</div>
+
+<script type="application/json" id="data">__DATA_JSON__</script>
+<script>
+(function () {
+  "use strict";
+  var M = JSON.parse(document.getElementById("data").textContent);
+  var V = M.version;
+  var REPO = "https://github.com/Saavuori/PowerPlatformAdminAPI";
+  var PAGES = "https://saavuori.github.io/PowerPlatformAdminAPI/";
+  var pages = M.pages;
+  var byId = {};
+  pages.forEach(function (p) { byId[p.id] = p; });
+  var HOSTS = { "{bapEndpoint}": "api.bap.microsoft.com", "{powerAppsEndpoint}": "api.powerapps.com", "{flowEndpoint}": "api.flow.microsoft.com", "{powerPlatformEndpoint}": "{environmentIdPrefix}.{environmentIdSuffix}.environment.api.powerplatform.com", "{cdsOneEndpoint}": "api.cds.microsoft.com" };
+  var BASIS = { S: "Verified from source", D: "Documented on Learn", I: "Inferred" };
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      var v = attrs[k];
+      if (v == null || v === false) return;
+      if (k === "text") el.textContent = v;
+      else if (k === "html") el.innerHTML = v;
+      else if (k === "cls") el.className = v;
+      else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    });
+    for (var i = 2; i < arguments.length; i++) add(el, arguments[i]);
+    return el;
+  }
+  function add(el, c) {
+    if (c == null || c === false) return;
+    if (Array.isArray(c)) { c.forEach(function (x) { add(el, x); }); return; }
+    el.appendChild(typeof c === "string" || typeof c === "number" ? document.createTextNode(String(c)) : c);
+  }
+  // inline `code` in plain strings, with no HTML interpretation
+  function rich(s) {
+    var frag = document.createDocumentFragment();
+    String(s || "").split(/(`[^`]+`)/).forEach(function (part) {
+      if (/^`[^`]+`$/.test(part)) frag.appendChild(h("code", { text: part.slice(1, -1) }));
+      else add(frag, linkify(part));
+    });
+    return frag;
+  }
+  function linkify(s) {
+    var out = [], re = /(https:\/\/(?:learn\.microsoft\.com|github\.com|saavuori\.github\.io)\/[^\s)\]]+)/g, last = 0, m;
+    while ((m = re.exec(s))) { out.push(s.slice(last, m.index)); out.push(h("a", { href: m[1], target: "_blank", rel: "noopener", text: m[1] })); last = re.lastIndex; }
+    out.push(s.slice(last));
+    return out;
+  }
+  function basisChip(b) { return h("span", { cls: "basis " + b, title: BASIS[b] || b, text: b }); }
+  // caveat strings start with [S]/[D]/[I]
+  function caveat(s) {
+    var m = /^\[(S|D|I)\]\s*/.exec(s);
+    return h("li", null, m ? [basisChip(m[1]), " "] : null, rich(m ? s.slice(m[0].length) : s));
+  }
+  function table(headers, rows) {
+    return h("div", { cls: "tbl" }, h("table", null,
+      h("thead", null, h("tr", null, headers.map(function (x) { return h("th", { scope: "col", text: x }); }))),
+      h("tbody", null, rows)));
+  }
+  function copyBtn(getText) {
+    return h("button", { cls: "copy", type: "button", onclick: function (e) {
+      var b = e.currentTarget, t = getText();
+      var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1400); };
+      try { navigator.clipboard.writeText(t).then(done, function () { selectFallback(b); }); } catch (err) { selectFallback(b); }
+    } }, "Copy");
+  }
+  function selectFallback(b) {
+    var pre = b.parentNode.querySelector("pre, .url");
+    if (!pre) return;
+    var r = document.createRange(); r.selectNodeContents(pre);
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    b.textContent = "Press Ctrl+C";
+  }
+  function codeBlock(text) {
+    var pre = h("pre", null, h("code", { text: text }));
+    return h("div", { style: "position:relative" }, h("div", { style: "position:absolute;right:8px;top:8px" }, copyBtn(function () { return text; })), pre);
+  }
+  function title(p) { return p.group + " - " + p.name; }
+
+  // ---------------------------------------------------------------- nav
+  var navtree = document.getElementById("navtree");
+  function buildNav(filter) {
+    navtree.innerHTML = "";
+    var f = (filter || "").toLowerCase();
+    M.sections.forEach(function (sec) {
+      var secEl = h("div", null, h("div", { cls: "nav-section", text: sec.name }));
+      var any = false;
+      sec.groups.forEach(function (g) {
+        var ops = pages.filter(function (p) {
+          if (p.group !== g.name) return false;
+          if (!f) return true;
+          return (title(p) + " " + p.path + " " + p.method + " " + p.cmdlets.join(" ")).toLowerCase().indexOf(f) >= 0;
+        });
+        if (!ops.length) return;
+        any = true;
+        var det = h("details", { cls: "nav-group", open: !!f || sec.name === "Data policies and governance" },
+          h("summary", null, h("span", { text: g.name }), h("span", { cls: "count", text: ops.length })),
+          ops.map(function (p) {
+            return h("a", { cls: "nav-op", href: "#" + p.id, "data-id": p.id },
+              h("span", { cls: "m" }, h("span", { cls: "verb " + p.method, text: p.method })), h("span", { text: p.name }));
+          }));
+        secEl.appendChild(det);
+      });
+      if (any) navtree.appendChild(secEl);
+    });
+    markActive();
+  }
+  var q = document.getElementById("q");
+  q.addEventListener("input", function () { buildNav(q.value); });
+  var navEl = document.getElementById("index"), tog = document.getElementById("navToggle");
+  tog.addEventListener("click", function () { var o = navEl.classList.toggle("open"); tog.setAttribute("aria-expanded", o ? "true" : "false"); });
+  function markActive() {
+    var id = (location.hash || "#overview").slice(1);
+    document.querySelectorAll("[data-id]").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-id") === id); });
+    var act = navtree.querySelector('.nav-op.active');
+    if (act) { var d = act.closest("details"); if (d) d.open = true; }
+  }
+
+  // ---------------------------------------------------------------- operation page
+  function sampleUrl(p) { return p.examples.url; }
+  function psExample(p) {
+    var body = p.examples.request_body;
+    var lines = [
+      "# $token: Entra ID access token, audience " + p.security.audience,
+      "#   (scope " + p.security.audience + "/.default). See Common concepts > Authentication.",
+      "$uri = '" + sampleUrl(p) + "'",
+      "$headers = @{ Authorization = \"Bearer $token\" }"
+    ];
+    if (body != null) {
+      lines.push("$body = @'", JSON.stringify(body, null, 2), "'@");
+      lines.push("Invoke-RestMethod -Method " + cap(p.method) + " -Uri $uri -Headers $headers -ContentType 'application/json; charset=utf-8' -Body $body");
+    } else if (p.body) {
+      lines.push("$body = $object | ConvertTo-Json -Depth 20   # module serialises with -Depth 20");
+      lines.push("Invoke-RestMethod -Method " + cap(p.method) + " -Uri $uri -Headers $headers -ContentType 'application/json; charset=utf-8' -Body $body");
+    } else {
+      lines.push("Invoke-RestMethod -Method " + cap(p.method) + " -Uri $uri -Headers $headers");
+    }
+    return lines.join("\n");
+  }
+  function cap(m) { return m.charAt(0) + m.slice(1).toLowerCase(); }
+  function curlExample(p) {
+    var l = ["curl -X " + p.method + " \\", "  '" + sampleUrl(p) + "' \\", "  -H \"Authorization: Bearer $TOKEN\""];
+    if (p.body) { l[l.length - 1] += " \\"; l.push("  -H 'Content-Type: application/json; charset=utf-8' \\"); l.push(p.examples.request_body != null ? "  --data-raw '" + JSON.stringify(p.examples.request_body).replace(/'/g, "'\\''") + "'" : "  --data @body.json"); }
+    return l.join("\n");
+  }
+  function httpExample(p) {
+    var u = sampleUrl(p), host = u.replace(/^https:\/\//, "").split("/")[0];
+    var l = [p.method + " " + u.replace(/^https:\/\/[^/]+/, "") + " HTTP/1.1", "Host: " + host, "Authorization: Bearer {token}"];
+    if (p.body) l.push("Content-Type: application/json; charset=utf-8");
+    var s = l.join("\n");
+    if (p.examples.request_body != null) s += "\n\n" + JSON.stringify(p.examples.request_body, null, 2);
+    return s;
+  }
+  function tabs(items) {
+    var wrap = h("div"), bar = h("div", { cls: "tabs", role: "tablist" }), panels = [];
+    items.forEach(function (it, i) {
+      var b = h("button", { type: "button", role: "tab", "aria-selected": i === 0 ? "true" : "false", text: it[0] });
+      var panel = h("div", { cls: "tabpanel", role: "tabpanel", hidden: i !== 0 }, codeBlock(it[1]));
+      b.addEventListener("click", function () {
+        bar.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", "false"); });
+        panels.forEach(function (x) { x.hidden = true; });
+        b.setAttribute("aria-selected", "true"); panel.hidden = false;
+      });
+      bar.appendChild(b); panels.push(panel);
+    });
+    wrap.appendChild(bar); panels.forEach(function (x) { wrap.appendChild(x); });
+    return wrap;
+  }
+  function defTable(name) {
+    var d = M.definitions[name];
+    if (!d) return null;
+    var body;
+    if (d.enum) {
+      body = table(["Value", "Basis", "Description"], d.enum.map(function (e) {
+        return h("tr", null, h("td", { cls: "name", text: e.value }), h("td", null, basisChip(e.basis)), h("td", null, rich(e.description || "")));
+      }));
+    } else {
+      body = table(["Name", "Type", "Basis", "Description"], (d.fields || []).map(function (f) {
+        return h("tr", null, h("td", { cls: "name", text: f.name }), h("td", null, typeLink(f.type)), h("td", null, basisChip(f.basis)), h("td", null, rich(f.description || "")));
+      }));
+    }
+    return h("div", null, h("h3", { id: "def-" + name, text: name }), d.description ? h("p", { cls: "note" }, rich(d.description)) : null, body);
+  }
+  function typeLink(t) {
+    var base = String(t).replace("[]", "");
+    if (M.definitions[base]) return h("a", { href: "#definitions", "data-def": base, onclick: function (e) { e.preventDefault(); var el = document.getElementById("def-" + base); if (el) el.scrollIntoView(); else go("definitions", base); }, text: t });
+    return h("span", { cls: "mono", text: t });
+  }
+
+  function renderOp(p, doc) {
+    var idx = pages.indexOf(p);
+    add(doc, h("div", { cls: "crumbs", text: p.section + " › " + p.group }));
+    add(doc, h("h1", { text: title(p) }));
+    var meta = h("div", { cls: "meta" });
+    if (p.official) meta.appendChild(h("a", { cls: "chip doc", href: p.official.url, target: "_blank", rel: "noopener", text: "Officially documented ↗" }));
+    else meta.appendChild(h("span", { cls: "chip warn", text: "Undocumented — derived from module v" + V }));
+    meta.appendChild(h("span", { cls: "chip ok", text: "Route: verified from source" }));
+    meta.appendChild(h("span", { cls: "chip", text: "Not verified live" }));
+    add(doc, meta);
+    add(doc, h("p", null, rich(p.description || "No description in the module help.")));
+    var url = "https://" + (HOSTS[p.host] || p.host) + p.path + (p.api_version ? "?api-version=" + p.api_version : "");
+    add(doc, h("div", { cls: "reqline" }, h("span", { cls: "verb " + p.method, text: p.method }), h("span", { cls: "url", text: url }), copyBtn(function () { return url; })));
+
+    add(doc, h("dl", { cls: "conf" },
+      h("dt", { text: "Route and verb" }), h("dd", { text: p.confidence.route }),
+      h("dt", { text: "api-version" }), h("dd", { text: p.confidence.api_version }),
+      h("dt", { text: "Request body" }), h("dd", { text: p.confidence.body }),
+      h("dt", { text: "Response" }), h("dd", { text: p.confidence.response }),
+      h("dt", { text: "Live check" }), h("dd", { text: p.confidence.live }),
+      h("dt", { text: "Module" }), h("dd", { text: M.module + " " + V })));
+
+    if (p.official) {
+      add(doc, h("div", { cls: "callout" }, h("strong", null, "Learn: "), h("a", { href: p.official.url, target: "_blank", rel: "noopener", text: p.official.title }),
+        h("ul", null, (p.official.differences || []).map(function (d) { return h("li", null, rich(d)); }))));
+    }
+
+    add(doc, h("h2", { text: "URI Parameters" }));
+    if (p.params.length) add(doc, table(["Name", "In", "Required", "Type", "Description"], p.params.map(function (x) {
+      return h("tr", null, h("td", { cls: "name", text: x.name }), h("td", { text: x.in }), h("td", { text: x.required ? "True" : "False" }), h("td", { text: x.type }), h("td", null, rich(x.description)));
+    })));
+    else add(doc, h("p", { cls: "note", text: "None. No api-version is sent for this route." }));
+
+    add(doc, h("h2", { text: "Request Header" }));
+    var hdr = [
+      h("tr", null, h("td", { cls: "name", text: "Authorization" }), h("td", { text: "True" }), h("td", { text: "string" }), h("td", null, "Bearer token for audience ", h("code", { text: p.security.audience }), ".")),
+      h("tr", null, h("td", { cls: "name", text: "User-Agent" }), h("td", { text: "False" }), h("td", { text: "string" }), h("td", null, "The module sends ", h("code", { text: "PowerShell cmdlets 1.0" }), "."))
+    ];
+    if (p.body) hdr.splice(1, 0, h("tr", null, h("td", { cls: "name", text: "Content-Type" }), h("td", { text: "True" }), h("td", { text: "string" }), h("td", null, h("code", { text: "application/json; charset=utf-8" }), " (set by the module only when a body is sent).")));
+    add(doc, table(["Name", "Required", "Type", "Description"], hdr));
+
+    if (p.body) {
+      add(doc, h("h2", { text: "Request Body" }));
+      var b = p.body;
+      if (b.kind === "definition") {
+        add(doc, h("p", { cls: "note" }, "Schema ", typeLink(b.type), ". " + b.basis_label + "."));
+        add(doc, table(["Name", "Type", "Basis", "Description"], b.rows.map(function (r) {
+          return h("tr", null, h("td", { cls: "name", text: r.name }), h("td", null, typeLink(r.type)), h("td", null, basisChip(r.basis)), h("td", null, rich(r.description)));
+        })));
+      } else if (b.kind === "literal") {
+        add(doc, h("p", { cls: "note", text: "Fields the cmdlet builds in its body literal. Values shown as “Set from” come from cmdlet parameters or variables." + (b.param ? " A caller-supplied -" + b.param + " object can replace it." : "") }));
+        add(doc, table(["Name", "Type", "Basis", "Description"], b.rows.map(function (r) {
+          return h("tr", null, h("td", { cls: "name", text: r.name }), h("td", { text: r.type }), h("td", null, basisChip(r.basis)), h("td", null, rich(r.description)));
+        })));
+      } else if (b.kind === "parameter") {
+        add(doc, h("div", { cls: "callout warn" }, "The body is the caller's ", h("code", { text: "-" + b.param }), " object, passed through unchanged. The module does not define its shape. Read it from the matching GET or from the cmdlet docs before sending."));
+      } else if (b.kind === "roundtrip") {
+        add(doc, h("p", null, "The cmdlet sends the full object it read with the matching GET, after changing these properties:"));
+        add(doc, h("ul", null, (b.writes || []).map(function (w) { return h("li", null, h("code", { text: w })); })));
+      } else {
+        add(doc, h("p", { cls: "note", text: b.basis_label + (b.expr ? ": " + b.expr : "") }));
+      }
+    }
+
+    add(doc, h("h2", { text: "Responses" }));
+    add(doc, table(["Name", "Type", "Description"], p.responses.rows.map(function (r) {
+      return h("tr", null, h("td", { text: r.code }), h("td", null, r.type ? typeLink(r.type) : ""), h("td", null, rich(r.description)));
+    })));
+    if (p.response_hints.length) {
+      add(doc, h("p", { cls: "note" }, "Response properties the cmdlet reads [S], a hint for the response schema:"));
+      add(doc, h("p", null, p.response_hints.map(function (x, i) { return [i ? ", " : "", h("code", { text: x })]; })));
+    }
+    var mb = Object.keys(p.mapped_by || {});
+    if (mb.length) {
+      add(doc, h("details", null, h("summary", { cls: "note", text: "Properties read by output mapping helpers (" + mb.join(", ") + ")" }),
+        mb.map(function (k) { return h("p", null, h("strong", { text: k + ": " }), (p.mapped_by[k] || []).map(function (x, i) { return [i ? ", " : "", h("code", { text: x })]; })); })));
+    }
+
+    add(doc, h("h2", { text: "Security" }));
+    add(doc, h("dl", { cls: "conf" },
+      h("dt", { text: "Type" }), h("dd", { text: "OAuth2 bearer token from Microsoft Entra ID" }),
+      h("dt", { text: "Audience" }), h("dd", null, h("code", { text: p.security.audience }), " ", basisChip("S")),
+      h("dt", { text: "Scope" }), h("dd", null, h("code", { text: p.security.audience + "/.default" }), " (module: ", h("code", { text: "$Audience/.default" }), ")"),
+      h("dt", { text: "Flows" }), h("dd", { text: "User (interactive or username/password) or service principal (client secret or certificate). See Common concepts." }),
+      h("dt", { text: "Required role" }), h("dd", null, rich(p.security.role || ""))));
+
+    add(doc, h("h2", { text: "Examples" }));
+    add(doc, h("h3", { text: "Sample request" }));
+    add(doc, tabs([["HTTP", httpExample(p)], ["PowerShell", psExample(p)], ["curl", curlExample(p)]]));
+    if (p.examples.request_body == null && p.body) add(doc, h("p", { cls: "note", text: "No sample body: the module does not define this object." }));
+    add(doc, h("h3", { text: "Sample response" }));
+    if (p.examples.response_body != null) {
+      add(doc, h("p", null, h("span", { cls: "chip inf", text: "Illustrative" }), " Built from the schema below, not captured live."));
+      add(doc, codeBlock(JSON.stringify(p.examples.response_body, null, 2)));
+    } else {
+      add(doc, h("p", { cls: "note", text: "No sample. The response shape has not been captured; see the properties the cmdlet reads above." }));
+    }
+
+    if (p.definitions.length) {
+      add(doc, h("h2", { text: "Definitions" }));
+      p.definitions.forEach(function (d) { add(doc, defTable(d)); });
+    }
+
+    add(doc, h("h2", { text: "Source" }));
+    add(doc, h("p", null, "Cmdlets: ", p.cmdlets.map(function (c, i) { return [i ? ", " : "", h("code", { text: c })]; })));
+    add(doc, table(["Function", "File", "Route line", "Call line", "Client"], p.sources.map(function (s) {
+      return h("tr", null, h("td", { cls: "name", text: s.function }), h("td", { cls: "mono", text: M.source_file }), h("td", { cls: "num", text: s.route_line }), h("td", { cls: "num", text: s.call_line }), h("td", { cls: "mono", text: s.call }));
+    })));
+    if (p.api_versions.length > 1) add(doc, h("p", { cls: "note" }, "api-version differs by cmdlet: ", p.api_versions.map(function (a, i) { return [i ? "; " : "", h("code", { text: a.value }), " (" + a.used_by.join(", ") + ")"]; })));
+
+    if (p.caveats.length) {
+      add(doc, h("h2", { text: "Caveats" }));
+      add(doc, h("ul", { cls: "caveats" }, p.caveats.map(caveat)));
+    }
+    add(doc, pager(idx));
+  }
+  function pager(idx) {
+    var prev = pages[idx - 1], next = pages[idx + 1];
+    return h("div", { cls: "pager" },
+      prev ? h("a", { href: "#" + prev.id }, "← " + title(prev)) : h("span"),
+      next ? h("a", { href: "#" + next.id }, title(next) + " →") : h("span"));
+  }
+
+  // ---------------------------------------------------------------- static pages
+  function section(doc, heading, nodes) { add(doc, h("h2", { text: heading })); add(doc, nodes); }
+  function p_(s) { return h("p", null, rich(s)); }
+  function ul(items) { return h("ul", null, items.map(function (x) { return h("li", null, rich(x)); })); }
+  function simpleTable(headers, rows) { return table(headers, rows.map(function (r) { return h("tr", null, r.map(function (c, i) { return h("td", { cls: i === 0 ? "name" : null }, rich(c)); })); })); }
+
+  function renderOverview(doc) {
+    var dlpGroups = M.sections[0].groups.map(function (g) { return g.name; });
+    var dlp = pages.filter(function (p) { return dlpGroups.indexOf(p.group) >= 0; });
+    var ver = M.verification, ok = ver.filter(function (v) { return v.route_ok && v.verb_ok && v.api_version_ok; }).length;
+    add(doc, h("div", { cls: "crumbs", text: "Reference" }));
+    add(doc, h("h1", { text: "Power Platform admin (BAP) API" }));
+    add(doc, p_("Operation-by-operation reference for the REST endpoints that the `Microsoft.PowerApps.Administration.PowerShell` module calls, mainly on `api.bap.microsoft.com`. It is laid out like the Power Platform REST reference on Learn, with one page per operation. Data policy (DLP) operations come first."));
+    add(doc, h("div", { cls: "callout warn" }, h("strong", null, "Unofficial. "), "Microsoft does not document these routes, except the four marked “Officially documented”. They were read from module source v" + V + " and can change in any release. Re-run the extraction script against new module versions and diff the results."));
+    add(doc, h("div", { cls: "stats" },
+      stat(pages.length, "operations"), stat(dlp.length, "data policy and governance operations"),
+      stat(ok + " / " + ver.length, "call sites re-verified against source lines"),
+      stat(pages.filter(function (p) { return p.official; }).length, "officially documented on Learn"),
+      stat(M.dynamic.length, "dynamic URLs (polling, SAS) not listed as operations")));
+    section(doc, "Confidence labels", [
+      h("div", { cls: "legend" }, h("span", null, basisChip("S"), " Verified from source"), h("span", null, basisChip("D"), " Documented on Learn (cmdlet or feature docs)"), h("span", null, basisChip("I"), " Inferred: confirm before relying on it")),
+      p_("Routes, verbs and api-versions are verified from source on every page. Request and response fields carry their own label. No response has been captured live, so status codes and sample responses are marked inferred or illustrative.")
+    ]);
+    section(doc, "Start here", ul([
+      "Common concepts: hosts per cloud, token audiences, headers, paging, long-running operations, errors and api-version conventions.",
+      "Policies: the current DLP schema (`PowerPlatform.Governance/v1/policies`). Get, then PATCH the full object.",
+      "Verification: how this reference was checked, and where the source contradicted the starting assumptions."
+    ]));
+    section(doc, "Companion files", ul([
+      "OpenAPI 3.0 for Postman or code generators (import by URL), with `x-confidence`, `x-basis`, `x-cmdlets` and `x-source` extensions: " + PAGES + "openapi.yaml",
+      "Raw extraction, one record per call site: " + PAGES + "endpoints.json",
+      "Scripts and hand-curated schemas (`extract_endpoints.py`, `build_docs.py`, `curation.yaml`) to regenerate everything for a new module version: " + REPO
+    ]));
+  }
+  function stat(n, label) { return h("div", { cls: "stat" }, h("b", { text: n }), h("span", { text: label })); }
+
+  function renderConcepts(doc) {
+    add(doc, h("div", { cls: "crumbs", text: "Reference" }));
+    add(doc, h("h1", { text: "Common concepts" }));
+    add(doc, p_("Behaviour shared by every operation, read from `Microsoft.PowerApps.RestClientModule.psm1` and `Microsoft.PowerApps.AuthModule.psm1` (module v" + V + "). Line numbers refer to those files."));
+    section(doc, "Hosts per cloud", [
+      p_("Routes use placeholders that `InvokeApi` replaces from the signed-in session (RestClientModule 253-262). The session values come from `Add-PowerAppsAccount -Endpoint` (AuthModule 625-734). `unsupported` hosts are rejected before any token is requested (RestClientModule 3-27)."),
+      simpleTable(["Cloud (-Endpoint)", "{bapEndpoint}", "{powerAppsEndpoint}", "{flowEndpoint}", "{powerPlatformEndpoint}", "{cdsOneEndpoint}"], [
+        ["prod", "api.bap.microsoft.com", "api.powerapps.com", "api.flow.microsoft.com", "api.powerplatform.com", "api.cds.microsoft.com"],
+        ["preview", "preview.api.bap.microsoft.com", "preview.api.powerapps.com", "preview.api.flow.microsoft.com", "api.powerplatform.com", "preview.api.cds.microsoft.com"],
+        ["tip1", "tip1.api.bap.microsoft.com", "tip1.api.powerapps.com", "tip1.api.flow.microsoft.com", "api.preprod.powerplatform.com", "tip1.api.cds.microsoft.com"],
+        ["tip2", "tip2.api.bap.microsoft.com", "tip2.api.powerapps.com", "tip2.api.flow.microsoft.com", "api.test.powerplatform.com", "tip2.api.cds.microsoft.com"],
+        ["usgov (GCC)", "gov.api.bap.microsoft.us", "gov.api.powerapps.us", "gov.api.flow.microsoft.us", "api.gov.powerplatform.microsoft.us", "gov.api.cds.microsoft.us"],
+        ["usgovhigh", "high.api.bap.microsoft.us", "high.api.powerapps.us", "high.api.flow.microsoft.us", "api.high.powerplatform.microsoft.us", "high.api.cds.microsoft.us"],
+        ["dod", "api.bap.appsplatform.us", "api.apps.appsplatform.us", "api.flow.appsplatform.us", "api.appsplatform.us", "dod.gov.api.cds.microsoft.us"],
+        ["china", "api.bap.partner.microsoftonline.cn", "api.powerapps.cn", "api.powerautomate.cn", "api.powerplatform.partner.microsoftonline.cn", "unsupported"]
+      ]),
+      p_("Copilot governance uses a per-environment host built from the environment id: `{idPrefix}.{last2}.environment.{powerPlatformEndpoint}`.")
+    ]);
+    section(doc, "Authentication", [
+      p_("Each request gets a token for the audience mapped from its host (`Get-AudienceForHostName`, RestClientModule 29-134). Tokens come from MSAL with scope `{audience}/.default` (AuthModule 353), so for BAP the scope string is `https://service.powerapps.com//.default` (double slash, as on Learn)."),
+      simpleTable(["Host (prod)", "Audience"], [
+        ["api.bap.microsoft.com, api.powerapps.com", "https://service.powerapps.com/"],
+        ["api.flow.microsoft.com", "https://service.flow.microsoft.com/"],
+        ["api.powerplatform.com and *.environment.api.powerplatform.com", "https://api.powerplatform.com"],
+        ["gov.api.bap.microsoft.us / high.api.bap.microsoft.us", "https://gov.service.powerapps.us/ and https://high.service.powerapps.us/"],
+        ["api.bap.appsplatform.us (dod)", "https://service.apps.appsplatform.us/"],
+        ["api.bap.partner.microsoftonline.cn (china)", "https://service.powerapps.cn/"],
+        ["Any host not in the table", "https://management.azure.com/ (fallback, with a warning for unknown Power Platform API hosts)"]
+      ]),
+      h("ul", { cls: "caveats" }, [
+        "[S] The host table has no entries for the `preview.*` hosts or `api.cds.microsoft.com`, so those requests fall back to the ARM audience and are likely to be rejected.",
+        "[S] Supported flows (AuthModule 459-568): interactive user sign-in, username and password (ROPC), service principal with client secret, service principal with certificate thumbprint.",
+        "[S] Default public client ids when `-ApplicationId` is omitted: `689e5960-2e49-4505-98d8-369236220fc6` (prod, preview, usgov, china), `66575185-e05b-476b-ab0a-8b574e1bacbd` (tip1/tip2), `0d74f23a-a499-466e-b3fb-9b08a1afb5c7` (usgovhigh), `800ede4f-8bf0-4947-ac19-bfa70e9b0940` (dod).",
+        "[D] A service principal must first be registered by a user-context admin through Admin Applications; after that it acts with Power Platform administrator rights (https://learn.microsoft.com/power-platform/admin/powerplatform-api-create-service-principal)."
+      ].map(caveat))
+    ]);
+    section(doc, "Request headers", h("ul", { cls: "caveats" }, [
+      "[S] `Authorization: Bearer {token}` and `User-Agent: PowerShell cmdlets 1.0` on every request (RestClientModule 158-159).",
+      "[S] With a body: `Content-Type: application/json; charset=utf-8`; the body is serialised with `ConvertTo-Json -Depth 20` (RestClientModule 168-169). Objects nested deeper than 20 levels are truncated by PowerShell.",
+      "[S] TLS 1.2 is forced. No other headers (no `Accept`, no `x-ms-client-request-id`) are sent."
+    ].map(caveat)));
+    section(doc, "api-version", h("ul", { cls: "caveats" }, [
+      "[S] `{apiVersion}` in a route is replaced by the cmdlet's `-ApiVersion` argument; if a cmdlet passes none, `InvokeApi` uses `2016-11-01` (RestClientModule 248).",
+      "[S] Defaults vary by cmdlet: 2016-11-01, 2017-05-01, 2017-06-01, 2018-01-01, 2019-05-01, 2019-10-01, 2020-06-01, 2020-08-01, 2021-02-01, 2021-04-01, 2022-11-01, and `1` for Copilot governance.",
+      "[S] No `PowerPlatform.Governance/v1` route except connector actions and tenant isolation has an `{apiVersion}` placeholder. Those cmdlets accept `-ApiVersion` but never send it.",
+      "[D] The four officially documented BAP endpoints use `api-version=2020-10-01` on Learn."
+    ].map(caveat)));
+    section(doc, "Paging", h("ul", { cls: "caveats" }, [
+      "[S] If a response has `nextLink`, `InvokeApi` requests it with the same method and body until it is absent, then returns `{ value: [...] }` with all pages concatenated (RestClientModule 287-319).",
+      "[S] There is no `$skiptoken` handling of its own; continuation relies on `nextLink`. Some cmdlets set `$top` (50 for DLP policies, configurable for apps and flows).",
+      "[S] Calls made directly with `Invoke-Request` (desktop flow modules, virtual connectors, legacy CDS) are not paged."
+    ].map(caveat)));
+    section(doc, "Long-running operations", h("ul", { cls: "caveats" }, [
+      "[S] There is no generic LRO handling in the REST client. Cmdlets that start long operations check for `202`, read `Location` (or `Operation-Location`, via `WaitUntilFinished`), and poll it with GET every 5 seconds until `state.id` is `Succeeded` or `Failed`, or a timeout passes (Administration psm1 ~11563).",
+      "[S] `Azure-AsyncOperation` and `Retry-After` are never read.",
+      "[S] Environment lifecycle status URLs look like `https://{bapEndpoint}/providers/Microsoft.BusinessAppPlatform/lifecycleOperations/{operationId}?api-version=...` (Get-AdminPowerAppOperationStatus accepts any such URL)."
+    ].map(caveat)));
+    section(doc, "Errors and retries", h("ul", { cls: "caveats" }, [
+      "[S] On failure the client parses the body and reads `error.message`; cmdlets also surface `error.code` and `errors` (RestClientModule 181-207, CreateHttpResponse). Expected shape: `{ \"error\": { \"code\": \"...\", \"message\": \"...\" } }`.",
+      "[S] There are no retries and no 429 throttling handling. Without `-ThrowOnFailure` most cmdlets return the error object instead of throwing."
+    ].map(caveat)));
+    section(doc, "Officially documented alternatives", h("ul", { cls: "caveats" }, [
+      "[D] The Power Platform API on `api.powerplatform.com` is documented on Learn (https://learn.microsoft.com/rest/api/power-platform/). Classic DLP policies are not part of it. Advanced connector policies are, under `governance/ruleBasedPolicies` (api-version 2024-10-01).",
+      "[D] Learn's documented BAP endpoints: list environments, list tenant settings, admin applications (service principal registration) and addAppUser. addAppUser is not called by this module version."
+    ].map(caveat)));
+  }
+
+  function renderVerification(doc) {
+    var v = M.verification;
+    add(doc, h("div", { cls: "crumbs", text: "Reference" }));
+    add(doc, h("h1", { text: "Verification" }));
+    add(doc, p_("Each extracted call site was re-read from `" + M.source_file + "` at its route line and call line. The check confirms that the route literal and HTTP verb appear there, and that the api-version matches the parameter default or the hard-coded value."));
+    var ok = v.filter(function (x) { return x.route_ok && x.verb_ok && x.api_version_ok; }).length;
+    add(doc, h("div", { cls: "stats" }, stat(ok + " / " + v.length, "call sites pass"), stat(v.filter(function (x) { return x.dlp; }).length, "DLP and governance call sites"), stat("0", "verified live")));
+    section(doc, "Corrections to the starting assumptions", h("ul", { cls: "caveats" }, [
+      "[S] `PowerPlatform.Governance/v2/policies/{policyName}?api-version=2018-01-01` does not appear in module " + V + ". DLP policies use `PowerPlatform.Governance/v1/policies` with no api-version (GET, POST, PATCH, DELETE).",
+      "[S] `…/v1/tenants/{tenantId}/policies/{policyName}/policyconnectorconfigurations` exists with GET, POST, PATCH and DELETE. It sends no api-version, not 2020-06-01.",
+      "[S] `…/v1/connectorBlockingPolicies/{policyId}` does not exist. The connector blocking policy lives at `…/v1/tenants/{tenantId}/connectorEnablementConfigurations[/{policyId}]`. The cmdlets declare api-version 2020-06-01 but never send it.",
+      "[S] Legacy `Microsoft.BusinessAppPlatform/scopes/admin/apiPolicies/{name}` is confirmed, with api-version 2016-11-01 or 2018-01-01 depending on the cmdlet, and an environment-scoped variant.",
+      "[S] Token audience for BAP is `https://service.powerapps.com/` (RestClientModule 47; AuthModule 41).",
+      "[S] Classification values `Confidential`, `General` and `Blocked` are confirmed (Add-ConnectorsToPolicy ValidateSet).",
+      "[I] `environmentType` values `AllEnvironments`, `OnlyEnvironments` and `ExceptEnvironments` appear in neither the source nor Learn. They remain inferred.",
+      "[S] InvokeApi's `-Method` is mandatory, so there is no implicit GET default. Only `Invoke-WebRequest` calls default to GET."
+    ].map(caveat)));
+    section(doc, "Officially documented endpoints compared with the module", [
+      simpleTable(["Endpoint", "Learn", "Module " + V], [
+        ["GET …/scopes/admin/environments", "api-version 2020-10-01", "2021-04-01, own $expand/$filter"],
+        ["POST …/listTenantSettings", "api-version 2020-10-01, `listtenantsettings`", "2016-11-01, `listTenantSettings`"],
+        ["GET / PUT …/adminApplications[/{id}]", "api-version 2020-10-01", "2020-06-01; also GET one and DELETE (undocumented)"],
+        ["POST …/environments/{id}/addAppUser", "api-version 2020-10-01", "Not called. The module uses …/addUser (different operation)"]
+      ])
+    ]);
+    section(doc, "DLP and governance call sites", table(["Function", "Verb", "Path", "Route line", "Call line", "api-version", "Result"],
+      v.filter(function (x) { return x.dlp; }).map(function (x) {
+        var good = x.route_ok && x.verb_ok && x.api_version_ok;
+        return h("tr", null, h("td", { cls: "name", text: x.function }), h("td", null, h("span", { cls: "verb " + x.method, text: x.method })),
+          h("td", { cls: "mono", text: x.path.replace("/providers/", "…/") }), h("td", { cls: "num", text: x.route_line }), h("td", { cls: "num", text: x.call_line }),
+          h("td", { cls: "mono", text: x.api_version || "none" }), h("td", { cls: good ? "ok-cell" : "bad-cell", text: good ? "Pass" : "Check" }));
+      })));
+    section(doc, "Dynamic URLs not listed as operations", [
+      p_("These calls take their URL from a response header, a SAS link or user input, so they have no route of their own."),
+      table(["Function", "Verb", "Call line", "URL source"], M.dynamic.map(function (d) {
+        return h("tr", null, h("td", { cls: "name", text: d.function }), h("td", null, h("span", { cls: "verb " + d.method, text: d.method })), h("td", { cls: "num", text: d.call_line }), h("td", { cls: "mono", text: d.source }));
+      }))
+    ]);
+    section(doc, "Live check (not yet done)", ul([
+      "Open the Power Platform admin center data policy editor with browser developer tools (Network tab), edit a policy, and compare the requests with the Policies pages.",
+      "Or run the cmdlets with `-Verbose`, which logs each URI, and capture traffic with Fiddler to record real response bodies and status codes.",
+      "Mark pages “Verified live” only after a captured response confirms them."
+    ]));
+  }
+
+  function renderDefinitions(doc, focus) {
+    add(doc, h("div", { cls: "crumbs", text: "Reference" }));
+    add(doc, h("h1", { text: "Definitions" }));
+    add(doc, p_("Object schemas used by the curated operations. Basis per field: S verified from source, D documented on Learn, I inferred."));
+    Object.keys(M.definitions).forEach(function (k) { add(doc, defTable(k)); });
+    if (focus) { var el = document.getElementById("def-" + focus); if (el) el.scrollIntoView(); }
+  }
+
+  // ---------------------------------------------------------------- router
+  var doc = document.getElementById("doc");
+  function go(id, focus) { if (location.hash.slice(1) !== id) location.hash = id; render(focus); }
+  function render(focus) {
+    var id = (location.hash || "#overview").slice(1);
+    doc.innerHTML = "";
+    if (byId[id]) { renderOp(byId[id], doc); document.title = title(byId[id]) + " · BAP Admin API Reference"; }
+    else if (id === "concepts") renderConcepts(doc);
+    else if (id === "verification") renderVerification(doc);
+    else if (id === "definitions") renderDefinitions(doc, focus);
+    else renderOverview(doc);
+    if (!byId[id]) document.title = "BAP Admin API Reference";
+    markActive();
+    if (!focus) window.scrollTo(0, 0);
+    if (navEl.classList.contains("open") && byId[id]) { navEl.classList.remove("open"); tog.setAttribute("aria-expanded", "false"); }
+  }
+  window.addEventListener("hashchange", function () { render(); });
+  buildNav("");
+  render();
+})();
+</script>
